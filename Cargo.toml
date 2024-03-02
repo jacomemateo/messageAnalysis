@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 rusqlite = "0.31.0"
 chrono = "0.4.34"
+chrono-tz = "0.8.6"
+json = "0.12.4"

@@ -1,45 +1,143 @@
-use std::path::Path;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
 use rusqlite;
+use std::fmt;
+use crate::attributed_text;
+
+struct BannedWords {
+    phrases: &'static [&'static str],
+    reactions: &'static [&'static str],
+}
 
 pub struct MessageData {
-    date: DateTime<Local>,
+    row_ids: i32,
+    date: DateTime<FixedOffset>,
     body: String,
     is_from_me: bool
 }
 
-pub struct RawMessageDate {
+impl fmt::Display for MessageData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {} {}\t {}",
+            self.row_ids, self.is_from_me as u8, self.date.format("%m/%d/%Y %H:%M:%S %p").to_string(), self.body.replace("\n", "\\n")
+        )
+    }
+}
+
+pub struct RawMessageData {
     row_id: i32,
-    date: i32,
-    text: String,
-    attributed_body: String,
-    handle_id: i32,
+    date: i64,
+    text:  Option<String>,
+    attributed_body: Option<Vec<u8>>,
     is_from_me: bool
 }
 
+const SECOND: i64 = 1_000_000_000;
+
+fn apple_date_to_datetime(date: i64) -> DateTime<FixedOffset> {
+    let date_str = "2001-01-01 00:00:00 -05:00";
+    let jan_2001 = DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S %z").unwrap();
+
+    let new_date = jan_2001 + chrono::Duration::seconds(date / SECOND);
+
+    new_date
+}
+
 pub fn read_messages(db_location: String, message_size:Option<i32>, handle_identifyer:i32) -> Vec<MessageData> {
-    let mut data = Vec::new();
+    const BANNED: BannedWords = BannedWords {
+        phrases: &[
+            "Cup Pong",
+            "20 Questions",
+            "Mancala",
+            "Archery",
+            "8 Ball+",
+            "8 Ball",
+            "Basketball",
+            "Archery",
+            "Darts",
+            "Mini Golf",
+            "Knockout",
+            "Word Hunt",
+            " "
+        ],
+        reactions: &["Loved “", "Laughed at “", "Questioned “", "Liked “", "Emphasized “", "Disliked “"],
+    };
 
-    let mut connection = rusqlite::Connection::open(db_location).unwrap();
+    let mut message_data: Vec<MessageData> = Vec::new();
 
-    let query = r#"
+    let connection = rusqlite::Connection::open(db_location).unwrap();
+
+    let mut query = r#"
         SELECT message.ROWID, message.date, message.text, message.attributedBody, message.handle_id, message.is_from_me
         FROM message
         LEFT JOIN handle ON message.handle_id = handle.ROWID
-    "#;
+    "#.to_string();
     
-    let mut stament = connection.prepare(query).unwrap();
+    query += &format!("WHERE message.handle_id = {}", handle_identifyer);
+
+    if let Some(message_size) = message_size {
+        query += &format!(" ORDER BY message.date DESC LIMIT {}", message_size);
+    }
+
+    let mut stament = connection.prepare(query.as_str()).unwrap();
 
     let messages = stament.query_map([], |row| {
-        Ok( RawMessageDate {
+        Ok( RawMessageData {
             row_id: row.get(0)?,
             date: row.get(1)?,
             text: row.get(2)?,
             attributed_body: row.get(3)?,
-            handle_id: row.get(4)?,
             is_from_me: row.get(5)?
         })
-    });
+    }).unwrap();
 
-    return data
+    'individual_word: for message in messages {
+        let msg = message.unwrap();
+
+        let mut text = String::new();
+
+        if let Some(body) = msg.text {
+            text = body;
+        } else if let Some(blob) = msg.attributed_body {
+            text = attributed_text::parse(blob);
+        }
+    
+        if text.len() == 0 {
+            continue 'individual_word;
+        }
+
+        for char in text.chars() {
+            let code_point = char as u32;
+            if code_point >= 0xFFF0 && code_point <= 0xFFFF {
+                continue 'individual_word;
+            }
+        }
+
+        for phrase in BANNED.phrases {
+            if text == phrase.to_owned() {
+                continue 'individual_word;
+            }
+        }
+
+        for phrase in BANNED.reactions {
+            if text.contains(phrase) {
+                continue 'individual_word;
+            }
+        }
+
+        let date = apple_date_to_datetime(msg.date);
+            
+        message_data.push(
+            MessageData {
+                row_ids: msg.row_id,
+                date: date,
+                body: text,
+                is_from_me: msg.is_from_me
+            }
+        );
+    }
+
+
+    return message_data
 }
