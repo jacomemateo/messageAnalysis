@@ -1,32 +1,13 @@
 use chrono::{DateTime, FixedOffset};
 use rusqlite;
-use std::fmt;
 use crate::attributed_text;
+use crate::message_data::MessageData;
 
 struct BannedWords {
     phrases: &'static [&'static str],
     reactions: &'static [&'static str],
 }
-
-pub struct MessageData {
-    row_ids: i32,
-    date: DateTime<FixedOffset>,
-    body: String,
-    is_from_me: bool
-}
-
-impl fmt::Display for MessageData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {} {}\t {}",
-            self.row_ids, self.is_from_me as u8, self.date.format("%m/%d/%Y %H:%M:%S %p").to_string(), self.body.replace("\n", "\\n")
-        )
-    }
-}
-
 pub struct RawMessageData {
-    row_id: i32,
     date: i64,
     text:  Option<String>,
     attributed_body: Option<Vec<u8>>,
@@ -84,7 +65,6 @@ pub fn read_messages(db_location: String, message_size:Option<i32>, handle_ident
 
     let messages = stament.query_map([], |row| {
         Ok( RawMessageData {
-            row_id: row.get(0)?,
             date: row.get(1)?,
             text: row.get(2)?,
             attributed_body: row.get(3)?,
@@ -130,8 +110,7 @@ pub fn read_messages(db_location: String, message_size:Option<i32>, handle_ident
             
         message_data.push(
             MessageData {
-                row_ids: msg.row_id,
-                date: date,
+                date,
                 body: text,
                 is_from_me: msg.is_from_me
             }

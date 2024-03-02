@@ -1,3 +1,8 @@
+// The code here was obtained from the following repo github.com/ReagentX/imessage-exporter
+// https://github.com/ReagentX/imessage-exporter/blob/release/imessage-database/src/util/streamtyped.rs
+// 
+// I tried by hardest but I honestly do not know how this works 😭
+
 const START_PATTERN: [u8; 2] = [0x0001, 0x002b];
 
 /// Literals: `[<Start of Selected Area> (SSA), <Index> (IND)]`

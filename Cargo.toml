@@ -9,4 +9,7 @@ edition = "2021"
 rusqlite = "0.31.0"
 chrono = "0.4.34"
 chrono-tz = "0.8.6"
-json = "0.12.4"
+serde_json = "1.0"
+serde = { version = "1.0.197", features = ["derive"] }
+simdutf8 = "0.1.4"
+encoding = "0.2.33"
