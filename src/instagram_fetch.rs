@@ -2,7 +2,8 @@ use serde_json;
 use std::{fs::File, io::BufReader};
 use serde::{Deserialize, Serialize};
 use encoding::Encoding;
-use chrono::{TimeZone, Utc};
+use chrono::{Local, TimeZone, Utc};
+use crate::message_data::MessageData;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Message {
@@ -17,7 +18,7 @@ struct MessageContainer {
 
 
 fn encode_as_latin1(input: &str) -> Vec<u8> {
-    // Choose Latin-1 encoding
+    // Latin-1 encoding
     let encoding = encoding::all::ISO_8859_1;
 
     // Create a raw encoder with a specified trap (EncoderTrap::Strict, EncoderTrap::Replace, etc.)
@@ -30,7 +31,19 @@ fn encode_as_latin1(input: &str) -> Vec<u8> {
     output
 }
 
-pub fn read_messages(path: &str) {
+pub fn read_messages_mul(paths: Vec<&str>) -> Vec<MessageData> {
+    let mut message_data: Vec<MessageData> = Vec::new();
+
+    for path in paths.iter().rev() {
+        message_data.append(& mut read_messages(path));
+    }
+
+    message_data
+}
+
+pub fn read_messages(path: &str) -> Vec<MessageData> {
+    let mut message_data: Vec<MessageData> = Vec::new();
+
     if let Ok(file) = File::open(path) {
         let reader = BufReader::new(file);
 
@@ -40,8 +53,18 @@ pub fn read_messages(path: &str) {
                     match msg.content {
                         Some(text) => {
                             let body = String::from_utf8(encode_as_latin1(&text)).unwrap();
+
                             let timestamp_seconds = msg.timestamp_ms/1000;
-                            println!("{} {}", Utc.timestamp_opt(timestamp_seconds as i64, 0).unwrap(), body)
+                            let adjusted_utc_datetime = Utc.timestamp_opt(timestamp_seconds as i64, 0).unwrap();
+                            let local_datetime = adjusted_utc_datetime.with_timezone(&Local);
+
+                            message_data.push(
+                            MessageData {
+                                    date: local_datetime,
+                                    body,
+                                    is_from_me: false
+                                }
+                            );
                         },
                         None => continue
                     }
@@ -52,4 +75,8 @@ pub fn read_messages(path: &str) {
     } else {
         println!("Error opening file");
     }
+
+    message_data.reverse();
+
+    message_data
 }

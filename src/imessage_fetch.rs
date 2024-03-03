@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, Local, Duration, TimeZone, Utc};
 use rusqlite;
 use crate::attributed_text;
 use crate::message_data::MessageData;
@@ -16,13 +16,13 @@ pub struct RawMessageData {
 
 const SECOND: i64 = 1_000_000_000;
 
-fn apple_date_to_datetime(date: i64) -> DateTime<FixedOffset> {
-    let date_str = "2001-01-01 00:00:00 -05:00";
-    let jan_2001 = DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S %z").unwrap();
+fn apple_date_to_datetime(date: i64) -> DateTime<Local> {
+    let jan_2001 = Utc.with_ymd_and_hms(2001, 1, 1, 0, 0, 0).unwrap();
+    let adjusted_utc_datetime = jan_2001 + Duration::seconds(date / SECOND);
 
-    let new_date = jan_2001 + chrono::Duration::seconds(date / SECOND);
+    let local_datetime = adjusted_utc_datetime.with_timezone(&Local);
 
-    new_date
+    local_datetime
 }
 
 pub fn read_messages(db_location: String, message_size:Option<i32>, handle_identifyer:i32) -> Vec<MessageData> {
