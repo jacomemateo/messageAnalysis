@@ -3,6 +3,8 @@ res/
 res/chat.db
 test*
 .DS_Store
+out/
+.idea
 
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,rust
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,rust
