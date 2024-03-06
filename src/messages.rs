@@ -5,33 +5,17 @@ use chrono::{DateTime, Local, Duration, Utc, TimeZone};
 use crate::attributed_text;
 use crate::msg_util::*;
 
-/// Used for dividing nanoseconds from IMessage to seconds
+/// Used for dividing nanoseconds from IMessage date to seconds
 const SECOND: i64 = 1_000_000_000;
 
 const INSTAGRAM_BANNED: BannedWords = BannedWords {
     match_whole_word: &[""],
-    match_in_word: &[
-        "sent an attachment.",
-        " to your message",
+    match_in_word: &["sent an attachment.", " to your message",
     ]
 };
 
 const I_MESSAGE_BANNED: BannedWords = BannedWords {
-    match_whole_word: &[
-        "Cup Pong",
-        "20 Questions",
-        "Mancala",
-        "Archery",
-        "8 Ball+",
-        "8 Ball",
-        "Basketball",
-        "Archery",
-        "Darts",
-        "Mini Golf",
-        "Knockout",
-        "Word Hunt",
-        " "
-    ],
+    match_whole_word: &["Cup Pong", "20 Questions", "Mancala", "Archery", "8 Ball+", "8 Ball", "Basketball", "Archery", "Darts", "Mini Golf", "Knockout", "Word Hunt", " "],
     match_in_word: &["Loved “", "Laughed at “", "Questioned “", "Liked “", "Emphasized “", "Disliked “"],
 };
 
@@ -45,6 +29,10 @@ impl Messages {
         Messages {
             message_vec: Vec::new()
         }
+    }
+
+    pub fn message_size(&self) -> usize {
+        self.message_vec.len()
     }
 
     pub fn save_to_csv(&self, path: &str) {
@@ -103,7 +91,8 @@ impl Messages {
             let text = &instagram_message["content"].to_string();
 
             // Fix instagram message body
-            let body = Self::decode_instagram_text(&text);
+            let mut body = Self::decode_instagram_text(&text);
+            body = (&body[1..body.len() - 1]).to_string();
 
             if INSTAGRAM_BANNED.invalid(&body) { continue; }
 
