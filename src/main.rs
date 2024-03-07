@@ -5,7 +5,6 @@ use std::io;
 mod attributed_text;
 mod msg_util;
 mod messages;
-use std::process::Command;
 use chrono::{Duration, NaiveDate};
 
 fn datesFreq(messages: &Messages) {
@@ -39,11 +38,10 @@ fn getRandomMessage(message: &Messages) {
     let mut rng = rand::thread_rng();
     let mut input = String::new();
 
-    while input != "exit" {
-    Command::new("clear").status().expect("Failed to execute command");
-    let mut index = rng.gen_range(0..message.message_size());
-    println!("From {}\t{}", if message.message_vec[index].is_from_me {"mateo"} else {"her"}, message.message_vec[index].body);
-    io::stdin().read_line(&mut input).expect("Failed to read line");
+    while input != "q" {
+        let mut index = rng.gen_range(0..message.message_size());
+        println!("From {}\t{}", if message.message_vec[index].is_from_me {"mateo"} else {"her"}, message.message_vec[index].body);
+        io::stdin().read_line(&mut input).expect("Failed to read line");
     }
 }
 
@@ -62,12 +60,12 @@ vec![
     );
 
     merged_msg.save_to_csv("out/concat_messages.csv");
-    println!("Messages successfully saves to file.");
+    println!("Messages successfully saves to file!");
 
     let mut input = String::new();
     println!("What would you like to do?");
     println!("1. Display number of messages sent per day.");
-    println!("2. Display random messages.");
+    println!("2. Display random messages (press enter to see next message, 'q' to exit).");
 
     io::stdin().read_line(& mut input).expect("Failed to read line");
 
@@ -76,6 +74,4 @@ vec![
         2 => getRandomMessage(&merged_msg),
         _ => println!("Goodbye.")
     }
-
-
 }
