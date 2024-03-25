@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::messages::Messages;
 use rand::Rng;
+use rusqlite::ffi::SQLITE3_TEXT;
 use std::io;
 mod attributed_text;
 mod msg_util;
@@ -45,33 +46,37 @@ fn getRandomMessage(message: &Messages) {
     }
 }
 
+fn save(message: &Messages) {
+    message.save_to_csv("out/concat_messages.csv");
+    println!("Messages successfully saves to file!");
+}
+
 fn main() {
 
 
     let merged_msg = Messages::from_merge(
-vec![
+        vec![
             Messages::from_instagram("res/adri_main_1.json", "mateo", "Adri Main"),
             Messages::from_instagram("res/adri_main_2.json", "mateo", "Adri Main"),
             Messages::from_instagram("res/adri_private_1.json", "mateo", "Adri Priv"),
             Messages::from_instagram("res/adri_private_2.json", "mateo", "Adri Priv"),
             Messages::from_instagram("res/chinese_dogs_1.json", "mateo", "Chinese Dog"),
             Messages::from_imessage_database("res/chat.db", None, 89, "iMessage")
-        ]
-    );
+        ]);
 
-    merged_msg.save_to_csv("out/concat_messages.csv");
-    println!("Messages successfully saves to file!");
-
-    let mut input = String::new();
     println!("What would you like to do?");
     println!("1. Display number of messages sent per day.");
     println!("2. Display random messages (press enter to see next message, 'q' to exit).");
+    println!("3. Save data to csv.");
+
+    let mut input = "".to_string();
 
     io::stdin().read_line(& mut input).expect("Failed to read line");
 
     match input.trim().parse::<i32>().unwrap() {
         1 => datesFreq(&merged_msg),
         2 => getRandomMessage(&merged_msg),
+        3 => save(&merged_msg),
         _ => println!("Goodbye.")
     }
 }
