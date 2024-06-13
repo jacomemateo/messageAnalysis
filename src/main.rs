@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use crate::messages::Messages;
 use rand::Rng;
-use rusqlite::ffi::SQLITE3_TEXT;
 use std::io;
 mod attributed_text;
 mod msg_util;
 mod messages;
 use chrono::{Duration, NaiveDate};
 
-fn datesFreq(messages: &Messages) {
+fn dates_freq(messages: &Messages) {
     let mut dates_freq: HashMap<NaiveDate, i32> = HashMap::new();
 
     for message in &messages.message_vec {
@@ -35,29 +34,36 @@ fn datesFreq(messages: &Messages) {
     }
 }
 
-fn getRandomMessage(message: &Messages) {
+fn get_random_message(message: &Messages) {
     let mut rng = rand::thread_rng();
     let mut input = String::new();
 
     while input != "q" {
-        let mut index = rng.gen_range(0..message.message_size());
+        let index = rng.gen_range(0..message.message_size());
         println!("From {}\t{}", if message.message_vec[index].is_from_me {"mateo"} else {"her"}, message.message_vec[index].body);
         io::stdin().read_line(&mut input).expect("Failed to read line");
     }
 }
 
-fn save(message: &Messages) {
+fn save_csv(message: &Messages) {
     message.save_to_csv("out/concat_messages.csv");
-    println!("Messages successfully saves to file!");
+    println!("Messages successfully saves to csv file!");
+}
+
+fn save_sql(messages: &Messages) {
+    messages.save_to_database("out/concat_messages.db");
+    println!("Messages saved to sql database");
 }
 
 fn main() {
-
+    
 
     let merged_msg = Messages::from_merge(
         vec![
-            Messages::from_instagram("res/adri_main_1.json", "mateo", "Adri Main"),
-            Messages::from_instagram("res/adri_main_2.json", "mateo", "Adri Main"),
+            Messages::from_instagram("res/adri_main_1.json", "brg.mateo", "Adri Main"),
+            Messages::from_instagram("res/adri_main_2.json", "brg.mateo", "Adri Main"),
+            Messages::from_instagram("res/adri_main_3.json", "brg.mateo", "Adri Main"),
+            Messages::from_instagram("res/skinwalkerblunt.json", "brg.mateo", "Blunt"),
             Messages::from_instagram("res/adri_private_1.json", "mateo", "Adri Priv"),
             Messages::from_instagram("res/adri_private_2.json", "mateo", "Adri Priv"),
             Messages::from_instagram("res/chinese_dogs_1.json", "mateo", "Chinese Dog"),
@@ -68,15 +74,17 @@ fn main() {
     println!("1. Display number of messages sent per day.");
     println!("2. Display random messages (press enter to see next message, 'q' to exit).");
     println!("3. Save data to csv.");
+    println!("4. Save data to sql");
 
     let mut input = "".to_string();
 
     io::stdin().read_line(& mut input).expect("Failed to read line");
 
     match input.trim().parse::<i32>().unwrap() {
-        1 => datesFreq(&merged_msg),
-        2 => getRandomMessage(&merged_msg),
-        3 => save(&merged_msg),
+        1 => dates_freq(&merged_msg),
+        2 => get_random_message(&merged_msg),
+        3 => save_csv(&merged_msg),
+        4 => save_sql(&merged_msg), 
         _ => println!("Goodbye.")
     }
 }

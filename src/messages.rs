@@ -2,6 +2,7 @@ use serde_json;
 use std::{fs::File, io::BufReader, io::Write};
 use encoding::Encoding;
 use chrono::{DateTime, Local, Duration, Utc, TimeZone};
+use rusqlite::Connection;
 use crate::attributed_text;
 use crate::msg_util::*;
 
@@ -15,7 +16,7 @@ const INSTAGRAM_BANNED: BannedWords = BannedWords {
 };
 
 const I_MESSAGE_BANNED: BannedWords = BannedWords {
-    match_whole_word: &["Cup Pong", "20 Questions", "Mancala", "Archery", "8 Ball+", "8 Ball", "Basketball", "Archery", "Darts", "Mini Golf", "Knockout", "Word Hunt", " "],
+    match_whole_word: &["Cup Pong", "Sea Battle", "Laughed at an image", "", "20 Questions", "Mancala", "Archery", "8 Ball+", "8 Ball", "Basketball", "Archery", "Darts", "Mini Golf", "Knockout", "Word Hunt", " "],
     match_in_word: &["Loved “", "Laughed at “", "Questioned “", "Liked “", "Emphasized “", "Disliked “"],
 };
 
@@ -25,14 +26,38 @@ pub struct Messages {
 }
 
 impl Messages {
-    pub fn new() -> Messages {
-        Messages {
-            message_vec: Vec::new()
-        }
-    }
-
     pub fn message_size(&self) -> usize {
         self.message_vec.len()
+    }
+
+    pub fn save_to_database(&self, path: &str) {
+        let conn = Connection::open(path).unwrap();
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY,
+                message_source TEXT NOT NULL,
+                date TEXT NOT NULL,
+                body TEXT NOT NULL,
+                is_from_me BOOL );
+            ", ()
+        ).unwrap();
+
+        for message in & self.message_vec {
+            conn.execute(
+                "
+                INSERT INTO messages (message_source, date, body, is_from_me)
+                VALUES (?1, ?2, ?3, ?4)
+                ",
+                (
+                    &message.message_source,
+                    message.date.format("%m/%d/%Y %H:%M:%S %p").to_string(), 
+                    &message.body,
+                    &message.is_from_me)
+            ).unwrap();    
+        }
+
+        conn.close().unwrap();
     }
 
     pub fn save_to_csv(&self, path: &str) {
@@ -146,7 +171,7 @@ impl Messages {
     pub fn from_imessage_database(db_location: &str, message_size:Option<i32>, handle_identifier:i32, message_source: &str) -> Messages {
         let mut message_vec: Vec<MessageData> = Vec::new();
 
-        let connection = match rusqlite::Connection::open(db_location) {
+        let connection = match Connection::open(db_location) {
             Ok(connection) => connection,
             Err(err) => panic!("Error {}", err)
         };

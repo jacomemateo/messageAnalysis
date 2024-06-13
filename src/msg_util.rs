@@ -17,7 +17,7 @@ impl fmt::Display for MessageData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}, {}, {}, {}",
+            "{}, {}, {}, \"{}\"",
             self.message_source, self.is_from_me, self.date.format("%m/%d/%Y %H:%M:%S %p").to_string(), self.message_content()
         )
     }
